@@ -25,7 +25,9 @@ Apps Script endpoint in `scripts/google-apps-script/Code.gs`.
 5. Choose **Deploy > New deployment**, select **Web app**, execute as yourself,
   and allow access to anyone with the link.
 6. Copy the deployment URL into a local `.env` file using `.env.example`.
-7. Run `npm run build` and push. GitHub Pages will then use the shared sheet.
+7. In GitHub, add repository secrets named `BOOKSHELF_API_URL` and
+  `BOOKSHELF_API_TOKEN` under **Settings > Secrets and variables > Actions**.
+8. Push or rerun the Pages workflow. GitHub Pages will then use the shared sheet.
 
 The token is included in the browser request because this is a static personal
 site. It is an access password, not a fully private server secret. Do not use
