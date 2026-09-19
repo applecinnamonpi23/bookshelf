@@ -16,7 +16,6 @@ export type Book = {
 const databaseName = 'bookshelf'
 const storeName = 'books'
 const metadataStoreName = 'metadata'
-const initializedKey = 'seeded'
 const dummyBookIds = ['seed-the-night-circus', 'seed-piranesi', 'seed-kitchen']
 
 function openDatabase(): Promise<IDBDatabase> {
@@ -42,22 +41,6 @@ function readAll(): Promise<Book[]> {
 function write(book: Book) {
   return openDatabase().then((db) => new Promise<void>((resolve, reject) => {
     const request = db.transaction(storeName, 'readwrite').objectStore(storeName).put(book)
-    request.onsuccess = () => resolve()
-    request.onerror = () => reject(request.error)
-  }))
-}
-
-function isInitialized(): Promise<boolean> {
-  return openDatabase().then((db) => new Promise((resolve, reject) => {
-    const request = db.transaction(metadataStoreName, 'readonly').objectStore(metadataStoreName).get(initializedKey)
-    request.onsuccess = () => resolve(Boolean(request.result))
-    request.onerror = () => reject(request.error)
-  }))
-}
-
-function markInitialized() {
-  return openDatabase().then((db) => new Promise<void>((resolve, reject) => {
-    const request = db.transaction(metadataStoreName, 'readwrite').objectStore(metadataStoreName).put(true, initializedKey)
     request.onsuccess = () => resolve()
     request.onerror = () => reject(request.error)
   }))
