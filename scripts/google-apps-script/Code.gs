@@ -53,7 +53,16 @@ function deleteBook_(id) {
 }
 
 function rowToBook_(row) {
-  return { id: String(row[0]), title: String(row[1]), authors: String(row[2] || '').split('|').filter(Boolean), coverImageUrl: String(row[3] || '') || undefined, isbn: String(row[4] || '') || undefined, publisher: String(row[5] || '') || undefined, publicationYear: row[6] ? Number(row[6]) : undefined, pageCount: row[7] ? Number(row[7]) : undefined, startDate: String(row[8]), endDate: String(row[9]), isFavourite: row[10] === true || String(row[10]).toLowerCase() === 'true', createdAt: String(row[11]) }
+  return { id: String(row[0]), title: String(row[1]), authors: String(row[2] || '').split('|').filter(Boolean), coverImageUrl: String(row[3] || '') || undefined, isbn: String(row[4] || '') || undefined, publisher: String(row[5] || '') || undefined, publicationYear: row[6] ? Number(row[6]) : undefined, pageCount: row[7] ? Number(row[7]) : undefined, startDate: normalizeDate_(row[8]), endDate: normalizeDate_(row[9]), isFavourite: row[10] === true || String(row[10]).toLowerCase() === 'true', createdAt: String(row[11]) }
+}
+
+function normalizeDate_(value) {
+  if (!value) return ''
+  if (Object.prototype.toString.call(value) === '[object Date]') return Utilities.formatDate(value, Session.getScriptTimeZone(), 'yyyy-MM-dd')
+  const text = String(value)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text
+  const parsed = new Date(text)
+  return isNaN(parsed.getTime()) ? '' : Utilities.formatDate(parsed, Session.getScriptTimeZone(), 'yyyy-MM-dd')
 }
 
 function authorize_(token) {

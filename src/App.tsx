@@ -21,8 +21,13 @@ const Upload = (props: IconProps) => <Glyph {...props} symbol="↑" />
 const X = (props: IconProps) => <Glyph {...props} symbol="×" />
 const PanelToggle = (props: IconProps) => <Glyph {...props} symbol="☰" />
 
-const formatDate = (date: string) => new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(`${date}T00:00:00`))
-const readingDays = (book: Book) => Math.max(1, Math.round((new Date(`${book.endDate}T00:00:00`).getTime() - new Date(`${book.startDate}T00:00:00`).getTime()) / 86400000) + 1)
+const parseDate = (value: string) => {
+  if (!value) return null
+  const date = new Date(/^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T00:00:00` : value)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+const formatDate = (date: string) => { const parsed = parseDate(date); return parsed ? new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric' }).format(parsed) : 'Date not recorded' }
+const readingDays = (book: Book) => { const start = parseDate(book.startDate); const end = parseDate(book.endDate); return start && end ? Math.max(1, Math.round((end.getTime() - start.getTime()) / 86400000) + 1) : 0 }
 const normalizeTitle = (title: string) => title.trim().toLocaleLowerCase().replace(/[^a-z0-9]+/g, ' ')
 const formatNumber = (value: number) => new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(value)
 
@@ -62,8 +67,9 @@ function App() {
   }, [query])
 
   const visibleBooks = books.filter((book) => activeView === 'all' || book.isFavourite).sort((a, b) => b.endDate.localeCompare(a.endDate))
-  const firstReadingDate = books.length ? Math.min(...books.map((book) => new Date(`${book.startDate}T00:00:00`).getTime())) : 0
-  const lastReadingDate = books.length ? Math.max(...books.map((book) => new Date(`${book.endDate}T00:00:00`).getTime())) : 0
+  const readingDates = books.flatMap((book) => [parseDate(book.startDate)?.getTime(), parseDate(book.endDate)?.getTime()]).filter((date): date is number => date !== undefined)
+  const firstReadingDate = readingDates.length ? Math.min(...readingDates) : 0
+  const lastReadingDate = readingDates.length ? Math.max(...readingDates) : 0
   const elapsedWeeks = books.length ? Math.max(1, (lastReadingDate - firstReadingDate) / 604800000) : 0
   const totalPages = books.reduce((total, book) => total + (book.pageCount ?? 0), 0)
   const booksPerWeek = elapsedWeeks ? books.length / elapsedWeeks : 0
