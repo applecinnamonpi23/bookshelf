@@ -65,9 +65,9 @@ function App() {
   const firstReadingDate = books.length ? Math.min(...books.map((book) => new Date(`${book.startDate}T00:00:00`).getTime())) : 0
   const lastReadingDate = books.length ? Math.max(...books.map((book) => new Date(`${book.endDate}T00:00:00`).getTime())) : 0
   const elapsedWeeks = books.length ? Math.max(1, (lastReadingDate - firstReadingDate) / 604800000) : 0
-  const totalWords = books.reduce((total, book) => total + (book.wordCount ?? 0), 0)
+  const totalPages = books.reduce((total, book) => total + (book.pageCount ?? 0), 0)
   const booksPerWeek = elapsedWeeks ? books.length / elapsedWeeks : 0
-  const wordsPerWeek = elapsedWeeks ? totalWords / elapsedWeeks : 0
+  const pagesPerWeek = elapsedWeeks ? totalPages / elapsedWeeks : 0
   const persist = async (book: Book) => { await saveBook(book); setBooks((current) => [...current.filter((item) => item.id !== book.id), book]); setSelectedBook(book) }
 
   const searchBooks = async (searchTerm = query) => {
@@ -76,7 +76,7 @@ function App() {
     setSuggestions([])
     setIsSearching(true); setSearchError('')
     try {
-      const response = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(searchTerm)}&limit=8&fields=key,title,author_name,isbn,publisher,first_publish_year,cover_i`)
+      const response = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(searchTerm)}&limit=8&fields=key,title,author_name,isbn,publisher,first_publish_year,cover_i,number_of_pages_median`)
       if (!response.ok) throw new Error('Search unavailable')
       const data = await response.json()
       setSearchResults(data.docs.map((item: Record<string, unknown>, index: number) => ({
@@ -86,16 +86,17 @@ function App() {
         isbn: Array.isArray(item.isbn) ? String(item.isbn[0]) : undefined,
         publisher: Array.isArray(item.publisher) ? String(item.publisher[0]) : undefined,
         publicationYear: typeof item.first_publish_year === 'number' ? item.first_publish_year : undefined,
+        pageCount: typeof item.number_of_pages_median === 'number' ? item.number_of_pages_median : undefined,
         id: String(item.key ?? index),
       })))
     } catch { setSearchError('Open Library could not be reached. Try again in a moment.') } finally { setIsSearching(false) }
   }
 
-  const addBook = async (startDate: string, endDate: string, wordCount?: number) => {
+  const addBook = async (startDate: string, endDate: string) => {
     if (!addingBook || !startDate || !endDate || endDate < startDate) return
     const duplicate = books.find((book) => normalizeTitle(book.title) === normalizeTitle(addingBook.title))
     if (duplicate) { setAddingBook(null); setSelectedBook(duplicate); return }
-    const book: Book = { ...addingBook, wordCount, id: crypto.randomUUID(), startDate, endDate, isFavourite: false, createdAt: new Date().toISOString() }
+    const book: Book = { ...addingBook, id: crypto.randomUUID(), startDate, endDate, isFavourite: false, createdAt: new Date().toISOString() }
     await persist(book); setAddingBook(null); setSearchResults([]); setQuery('')
   }
 
@@ -140,7 +141,7 @@ function App() {
     </aside>
     <main className="main-content">
       <header className="topbar"><div><p className="eyebrow">Personal reading archive</p><h1>My bookshelf</h1></div></header>
-      <section className="metrics" aria-label="Reading metrics"><Metric label="Books read" value={books.length.toString()} /><Metric label="Words read" value={totalWords ? formatNumber(totalWords) : '—'} /><Metric label="Books / week" value={booksPerWeek ? booksPerWeek.toFixed(1) : '—'} /><Metric label="Words / week" value={wordsPerWeek ? formatNumber(wordsPerWeek) : '—'} /></section>
+      <section className="metrics" aria-label="Reading metrics"><Metric label="Books read" value={books.length.toString()} /><Metric label="Pages read" value={totalPages ? formatNumber(totalPages) : '—'} /><Metric label="Books / week" value={booksPerWeek ? booksPerWeek.toFixed(1) : '—'} /><Metric label="Pages / week" value={pagesPerWeek ? formatNumber(pagesPerWeek) : '—'} /></section>
       <section className="search-panel" aria-label="Search for a book"><div className="search-copy"><p className="eyebrow">Add a finished book</p><h2>What did you read?</h2><p>Search Open Library, choose the right edition, and add your reading dates.</p></div><div className="search-area"><form className="search-box" onSubmit={(event: FormEvent) => { event.preventDefault(); searchBooks() }}><Search size={19} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search by title" aria-label="Search by title" autoComplete="off" /><button type="submit" disabled={isSearching}>{isSearching ? 'Searching' : 'Search'} <ChevronRight size={16} /></button></form>{suggestions.length > 0 && <div className="suggestions" role="listbox" aria-label="Book title suggestions">{suggestions.map((suggestion) => <button type="button" key={suggestion} onClick={() => searchBooks(suggestion)}>{suggestion}</button>)}</div>}</div></section>
       {(searchResults.length > 0 || searchError) && <section className="results-panel"><div className="section-heading"><div><p className="eyebrow">Open Library results</p><h2>Choose an edition</h2></div><button className="icon-button" onClick={() => { setSearchResults([]); setSearchError('') }} aria-label="Close search results"><X size={18} /></button></div>{searchError && <p className="error-message">{searchError}</p>}<div className="results-grid">{searchResults.map((result) => <button className="result-card" key={`${result.title}-${result.isbn}`} onClick={() => setAddingBook(result)}><Cover book={result} /><span><strong>{result.title}</strong><small>{result.authors.join(', ')}</small><small>{[result.publisher, result.publicationYear, result.isbn].filter(Boolean).join(' · ') || 'Edition details unavailable'}</small></span><Plus size={18} /></button>)}</div></section>}
       <section className="shelf-section"><div className="section-heading"><div><p className="eyebrow">{activeView === 'all' ? 'Recently completed' : 'Saved favourites'}</p>{activeView === 'favourites' && <h2>Books worth returning to</h2>}</div></div>{visibleBooks.length === 0 ? <div className="empty-state"><BookOpen size={28} /><h3>{activeView === 'all' ? 'Your shelf is empty' : 'No favourites yet'}</h3><p>{activeView === 'all' ? 'Search above to add your first finished book.' : 'Tap the heart on a book to keep it close.'}</p></div> : <div className="shelf-grid">{visibleBooks.map((book) => <button className="book-card" key={book.id} onClick={() => setSelectedBook(book)}><Cover book={book} />{book.isFavourite && <Heart className="favourite-badge" size={15} fill="currentColor" />}</button>)}</div>}</section>
@@ -161,14 +162,14 @@ function Cover({ book, large = false }: { book: Partial<Book>; large?: boolean }
   return book.coverImageUrl && !imageFailed ? <img className={large ? 'book-cover large' : 'book-cover'} src={book.coverImageUrl} alt={`Cover of ${book.title}`} onError={() => setImageFailed(true)} /> : fallback
 }
 
-function DateModal({ title, onClose, onSave }: { title: string; onClose: () => void; onSave: (start: string, end: string, wordCount?: number) => void }) {
-  const [start, setStart] = useState(''); const [end, setEnd] = useState(''); const [wordCount, setWordCount] = useState('')
-  return <div className="modal-backdrop"><form className="modal" onSubmit={(event) => { event.preventDefault(); onSave(start, end, wordCount ? Number(wordCount) : undefined) }}><button type="button" className="modal-close icon-button" onClick={onClose} aria-label="Close"><X size={18} /></button><p className="eyebrow">Reading dates</p><h2>{title}</h2><p className="modal-copy">When did you start and finish this book?</p><label>Started<input type="date" value={start} onChange={(event) => setStart(event.target.value)} required /></label><label>Finished<input type="date" value={end} min={start} onChange={(event) => setEnd(event.target.value)} required /></label><label>Word count <span className="optional">optional</span><input type="number" min="0" step="1" value={wordCount} onChange={(event) => setWordCount(event.target.value)} placeholder="e.g. 80000" /></label><button className="primary-button" type="submit"><Check size={16} /> Save to bookshelf</button></form></div>
+function DateModal({ title, onClose, onSave }: { title: string; onClose: () => void; onSave: (start: string, end: string) => void }) {
+  const [start, setStart] = useState(''); const [end, setEnd] = useState('')
+  return <div className="modal-backdrop"><form className="modal" onSubmit={(event) => { event.preventDefault(); onSave(start, end) }}><button type="button" className="modal-close icon-button" onClick={onClose} aria-label="Close"><X size={18} /></button><p className="eyebrow">Reading dates</p><h2>{title}</h2><p className="modal-copy">When did you start and finish this book?</p><label>Started<input type="date" value={start} onChange={(event) => setStart(event.target.value)} required /></label><label>Finished<input type="date" value={end} min={start} onChange={(event) => setEnd(event.target.value)} required /></label><button className="primary-button" type="submit"><Check size={16} /> Save to bookshelf</button></form></div>
 }
 
 function EditModal({ book, onClose, onSave }: { book: Book; onClose: () => void; onSave: (book: Book) => void }) {
-  const [title, setTitle] = useState(book.title); const [start, setStart] = useState(book.startDate); const [end, setEnd] = useState(book.endDate); const [wordCount, setWordCount] = useState(book.wordCount?.toString() ?? '')
-  return <div className="modal-backdrop"><form className="modal" onSubmit={(event) => { event.preventDefault(); onSave({ ...book, title: title.trim() || book.title, startDate: start, endDate: end, wordCount: wordCount ? Number(wordCount) : undefined }) }}><button type="button" className="modal-close icon-button" onClick={onClose} aria-label="Close"><X size={18} /></button><p className="eyebrow">Edit entry</p><h2>Keep the details current</h2><label>Title<input value={title} onChange={(event) => setTitle(event.target.value)} required /></label><label>Started<input type="date" value={start} onChange={(event) => setStart(event.target.value)} required /></label><label>Finished<input type="date" value={end} min={start} onChange={(event) => setEnd(event.target.value)} required /></label><label>Word count <span className="optional">optional</span><input type="number" min="0" step="1" value={wordCount} onChange={(event) => setWordCount(event.target.value)} placeholder="e.g. 80000" /></label><button className="primary-button" type="submit"><Check size={16} /> Save changes</button></form></div>
+  const [title, setTitle] = useState(book.title); const [start, setStart] = useState(book.startDate); const [end, setEnd] = useState(book.endDate)
+  return <div className="modal-backdrop"><form className="modal" onSubmit={(event) => { event.preventDefault(); onSave({ ...book, title: title.trim() || book.title, startDate: start, endDate: end }) }}><button type="button" className="modal-close icon-button" onClick={onClose} aria-label="Close"><X size={18} /></button><p className="eyebrow">Edit entry</p><h2>Keep the details current</h2><label>Title<input value={title} onChange={(event) => setTitle(event.target.value)} required /></label><label>Started<input type="date" value={start} onChange={(event) => setStart(event.target.value)} required /></label><label>Finished<input type="date" value={end} min={start} onChange={(event) => setEnd(event.target.value)} required /></label><button className="primary-button" type="submit"><Check size={16} /> Save changes</button></form></div>
 }
 
 export default App

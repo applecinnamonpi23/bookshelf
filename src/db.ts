@@ -6,7 +6,7 @@ export type Book = {
   isbn?: string
   publisher?: string
   publicationYear?: number
-  wordCount?: number
+  pageCount?: number
   startDate: string
   endDate: string
   isFavourite: boolean
