@@ -1,4 +1,5 @@
-import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import type { ChangeEvent, FormEvent } from 'react'
 import { getBooks, importBooks, removeBook, saveBook } from './db'
 import type { Book } from './db'
 import './App.css'
