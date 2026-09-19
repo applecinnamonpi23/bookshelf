@@ -132,10 +132,44 @@ bookshelf, completed-book dates, and search-to-add using an external book
 database. Persistence and favourites follow immediately after the core workflow
 is proven.
 
-## Open Decisions
+## Decisions for the MVP
 
-- Which book database API should be used, and does it require an API key?
-- Should the first version use a local database, hosted backend, or browser storage?
-- Can a book be added more than once for rereads, or should each title appear only once?
-- Should users be able to edit or delete a saved book after adding it?
-- What should happen when the API returns multiple editions or no cover image?
+### Book search API
+
+Use the Open Library Search API. It is free for this personal project and does
+not require an API key for basic title searches. It provides authors, edition
+metadata, ISBNs, and cover identifiers. Store the selected metadata locally so
+the bookshelf does not depend on future search results.
+
+Google Books can remain a later fallback if Open Library does not provide a
+useful edition or cover. It generally expects an API key for reliable use, so it
+adds setup and quota management that the MVP does not need.
+
+### Storage and hosting
+
+Deploy the frontend as a static site, initially using GitHub Pages. Store books
+in browser storage using IndexedDB through a small storage repository. This is
+free, requires no server or database account, and is enough for one person using
+one primary browser.
+
+Keep the storage repository separate from the UI and external search client. If
+cross-device access becomes important, replace that repository with a hosted
+store later without changing the bookshelf screens. A simple next option would
+be Google Sheets through a private Apps Script endpoint; a hosted database is
+not needed unless the project grows beyond personal use.
+
+The MVP should show a clear warning or export option before browser data is
+cleared. Add JSON export/import before treating the browser copy as the only
+backup.
+
+### Book identity and editing
+
+- A title may appear at most once. Use a normalized title as the initial
+	duplicate check, while allowing the user to correct the selected edition.
+- Users can edit all saved book metadata and reading dates.
+- Users can delete a saved book after a confirmation step.
+- When search returns multiple editions, show the results with cover, title,
+	author, publisher, publication year, and ISBN where available, and let the
+	user choose one.
+- When an edition has no cover, allow the user to save it with a generated
+	text cover or add a cover image URL later. Never make a cover mandatory.
