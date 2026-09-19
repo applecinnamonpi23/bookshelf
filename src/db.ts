@@ -17,6 +17,7 @@ const databaseName = 'bookshelf'
 const storeName = 'books'
 const metadataStoreName = 'metadata'
 const initializedKey = 'seeded'
+const dummyBookIds = ['seed-the-night-circus', 'seed-piranesi', 'seed-kitchen']
 
 function openDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -62,22 +63,19 @@ function markInitialized() {
   }))
 }
 
-const seedBooks: Book[] = [
-  { id: 'seed-the-night-circus', title: 'The Night Circus', authors: ['Erin Morgenstern'], coverImageUrl: 'https://covers.openlibrary.org/isbn/9780307744432-L.jpg', isbn: '9780307744432', publisher: 'Vintage', publicationYear: 2012, startDate: '2026-01-06', endDate: '2026-01-19', isFavourite: true, createdAt: '2026-01-19T19:00:00.000Z' },
-  { id: 'seed-piranesi', title: 'Piranesi', authors: ['Susanna Clarke'], coverImageUrl: 'https://covers.openlibrary.org/isbn/9781635575637-L.jpg', isbn: '9781635575637', publisher: 'Bloomsbury', publicationYear: 2020, startDate: '2026-02-02', endDate: '2026-02-08', isFavourite: false, createdAt: '2026-02-08T19:00:00.000Z' },
-  { id: 'seed-kitchen', title: 'Kitchen', authors: ['Banana Yoshimoto'], coverImageUrl: 'https://covers.openlibrary.org/isbn/9780802142444-L.jpg', isbn: '9780802142444', publisher: 'Grove Press', publicationYear: 1994, startDate: '2026-03-04', endDate: '2026-03-07', isFavourite: true, createdAt: '2026-03-07T19:00:00.000Z' },
-]
+async function removeDummyBooks() {
+  const db = await openDatabase()
+  await new Promise<void>((resolve, reject) => {
+    const transaction = db.transaction(storeName, 'readwrite')
+    for (const id of dummyBookIds) transaction.objectStore(storeName).delete(id)
+    transaction.oncomplete = () => resolve()
+    transaction.onerror = () => reject(transaction.error)
+  })
+}
 
 export async function getBooks() {
-  const books = await readAll()
-  if (books.length > 0) {
-    if (!await isInitialized()) await markInitialized()
-    return books
-  }
-  if (await isInitialized()) return books
-  for (const book of seedBooks) await write(book)
-  await markInitialized()
-  return seedBooks
+  await removeDummyBooks()
+  return readAll()
 }
 
 export async function saveBook(book: Book) {
